@@ -6,7 +6,7 @@
 /* --------------------------------------------------------------------------
    CONFIG — boshqa to‘y uchun faqat shu qismni o‘zgartiring
    -------------------------------------------------------------------------- */
-const MAP_URL = "#"; // Google Maps havolasi (masalan: "https://maps.app.goo.gl/...")
+const MAP_URL = "https://yandex.uz/maps/-/CTTLmEMF"; // Yandex Maps havolasi
 
 const weddingConfig = {
   groom: "O‘ktam",
@@ -15,6 +15,7 @@ const weddingConfig = {
   dateText: "14 sentyabr",           // Ekranda ko‘rinadigan sana
   venue: "Imperial Wedding Hall",
   landmark: "Gorni universitet ro‘parasida",
+  coords: { lat: 40.095266, lng: 65.386922 }, // mapUrl bo‘sh bo‘lsa shu koordinatalardan Yandex havola yasaladi
   mapUrl: MAP_URL,
   music: "music.mp3",
 };
@@ -303,9 +304,20 @@ function initMapButton() {
   const btn = $("#map-btn");
   if (!btn) return;
 
-  btn.addEventListener("click", () => {
+  const buildUrl = () => {
     const url = weddingConfig.mapUrl || MAP_URL;
-    if (!url || url === "#") return; // havola hali qo‘yilmagan
+    if (url && url !== "#") return url;
+    const c = weddingConfig.coords;
+    if (c && Number.isFinite(c.lat) && Number.isFinite(c.lng)) {
+      // Yandex: pt=lng,lat
+      return `https://yandex.uz/maps/?pt=${c.lng},${c.lat}&z=17&l=map`;
+    }
+    return "";
+  };
+
+  btn.addEventListener("click", () => {
+    const url = buildUrl();
+    if (!url) return; // havola ham, koordinata ham yo‘q
     window.open(url, "_blank", "noopener");
   });
 }
