@@ -1,17 +1,44 @@
 # O‘ktam & Dilbar — Taklifnoma
 
-Premium, minimalist digital wedding invitation. Sof HTML5 + CSS3 + Vanilla JS, hech qanday framework yo‘q.
+Premium digital wedding invitation. Sof HTML5 + CSS3 + Vanilla JS — framework yo‘q, build yo‘q.
+
+## Struktura
 
 ```
 ├── index.html
 ├── style.css
 ├── script.js
-├── music.mp3     ← fon musiqasi (112 kbps, ~3.9 MB)
-└── preview.jpg   ← Telegram/WhatsApp preview rasmi (ixtiyoriy, 1200×630)
+└── assets/
+    ├── music.mp3          fon musiqasi
+    ├── fonts.css          self-hosted shriftlar
+    ├── fonts/             .woff2 fayllar
+    ├── couple.jpg         kelin-kuyov surati   (o‘zingiz qo‘shasiz)
+    ├── venue.jpg          to‘yxona surati      (o‘zingiz qo‘shasiz)
+    └── preview.jpg        Telegram/WhatsApp preview, 1200×630 (ixtiyoriy)
 ```
 
-**Sozlash:** `script.js` boshidagi `MAP_URL` (Yandex Maps) va `weddingConfig` ni o‘zgartiring.
+`couple.jpg`, `venue.jpg`, `preview.jpg` bo‘lmasa ham sayt xatosiz ishlaydi —
+suratlar o‘rnida nafis ornamental placeholder ko‘rinadi.
 
-**Lokal ochish:** `index.html` ni brauzerda oching yoki `python3 -m http.server 8080`.
+## Sozlash
 
-**Deploy:** Netlify / Vercel / GitHub Pages — papkani shundayligicha yuklang.
+Barcha ma’lumot `script.js` boshidagi `wedding` obyektida:
+ismlar, sana, to‘yxona, mo‘ljal, xarita havolasi, to‘y dasturi, RSVP manzili.
+
+## Bo‘limlar
+
+Konvert intro → Hero → Taklif matni → Surat → Sana → Countdown →
+To‘y dasturi → Manzil → RSVP → Yakuniy bo‘lim.
+
+## Ishga tushirish
+
+`index.html` ni brauzerda oching yoki papkada:
+
+```
+python3 -m http.server 8080
+```
+
+## Deploy
+
+Har push’da GitHub Actions saytni `gh-pages` branchiga chiqaradi.
+Netlify / Vercel uchun ham papkani shundayligicha yuklash kifoya — build kerak emas.

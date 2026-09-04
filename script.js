@@ -1,123 +1,179 @@
 /* ==========================================================================
-   O‘ktam & Dilbar — Taklifnoma
+   O‘ktam & Dilbar — Digital Wedding Invitation
    Vanilla JS · no dependencies
    ========================================================================== */
 
 /* --------------------------------------------------------------------------
-   CONFIG — boshqa to‘y uchun faqat shu qismni o‘zgartiring
+   CONFIG — barcha o‘zgaradigan ma’lumot shu yerda
    -------------------------------------------------------------------------- */
-const MAP_URL = "https://yandex.uz/maps/-/CTTLmEMF"; // Yandex Maps havolasi
-
-const weddingConfig = {
+const wedding = {
   groom: "O‘ktam",
   bride: "Dilbar",
-  date: "2026-09-14T18:00:00",       // Countdown uchun (mahalliy vaqt)
-  dateText: "14 sentyabr",           // Ekranda ko‘rinadigan sana
+
+  // Nikoh to‘yi sanasi va boshlanish vaqti (Toshkent vaqti, +05:00)
+  date: "2026-09-14T19:00:00+05:00",
+  displayDate: "14.09.2026",
+
   venue: "Imperial Wedding Hall",
-  landmark: "Gorni universitet ro‘parasida",
-  coords: { lat: 40.095266, lng: 65.386922 }, // mapUrl bo‘sh bo‘lsa shu koordinatalardan Yandex havola yasaladi
-  mapUrl: MAP_URL,
-  music: "music.mp3",
+  landmark: "Gorny universitet ro‘parasida",
+
+  // Xarita: Yandex Maps havolasi. Bo‘sh qoldirilsa koordinatalardan yasaladi.
+  mapUrl: "https://yandex.uz/maps/-/CTTLmEMF",
+  coords: { lat: 40.095266, lng: 65.386922 },
+
+  // Fayllar
+  music: "./assets/music.mp3",
+  couplePhoto: "./assets/couple.jpg",
+  venuePhoto: "./assets/venue.jpg",
+
+  // To‘y dasturi — istagancha qator qo‘shsa bo‘ladi
+  timeline: [
+    { time: "18:00", title: "Mehmonlarni kutib olish", icon: "glass" },
+    { time: "19:00", title: "To‘y oqshomi", icon: "rings" },
+  ],
+
+  // RSVP javoblari qayerga yuborilsin.
+  // Raqam yozilsa WhatsApp'ga, username yozilsa Telegram'ga yuboriladi.
+  // Ikkalasi bo‘sh bo‘lsa javob shu qurilmada saqlanadi va tasdiq matni chiqadi.
+  rsvpWhatsApp: "",   // masalan: "998901234567"
+  rsvpTelegram: "",   // masalan: "username" (@ belgisisiz)
 };
 
 /* --------------------------------------------------------------------------
    Helpers
    -------------------------------------------------------------------------- */
-const $ = (sel, root = document) => root.querySelector(sel);
-const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const reduced = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const prefersReducedMotion = () =>
-  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const MONTHS = ["Yanvar", "Fevral", "Mart", "Aprel", "May", "Iyun",
+  "Iyul", "Avgust", "Sentyabr", "Oktyabr", "Noyabr", "Dekabr"];
+const WEEKDAYS = ["Yakshanba", "Dushanba", "Seshanba", "Chorshanba",
+  "Payshanba", "Juma", "Shanba"];
 
-const capitalize = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+/** ISO satridan sana qismlarini o‘qiydi — foydalanuvchi vaqt mintaqasiga bog‘liq emas. */
+function parseDateParts(iso) {
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);
+  if (!m) return null;
+  const [, y, mo, d, hh = "00", mm = "00"] = m;
+  return {
+    year: Number(y),
+    month: Number(mo),
+    day: Number(d),
+    hours: hh,
+    minutes: mm,
+    // Kalendar sanasiga mos hafta kuni (UTC orqali — mintaqadan qat’i nazar to‘g‘ri)
+    weekday: WEEKDAYS[new Date(Date.UTC(Number(y), Number(mo) - 1, Number(d))).getUTCDay()],
+  };
+}
 
 /* --------------------------------------------------------------------------
    Config → DOM
    -------------------------------------------------------------------------- */
 function applyConfig() {
-  const [day = "", ...rest] = weddingConfig.dateText.trim().split(/\s+/);
-  const month = capitalize(rest.join(" "));
+  const p = parseDateParts(wedding.date);
+  const names = `${wedding.groom} & ${wedding.bride}`;
+  const pad2 = (n) => String(n).padStart(2, "0");
 
   const values = {
-    groom: weddingConfig.groom,
-    bride: weddingConfig.bride,
-    venue: weddingConfig.venue,
-    landmark: weddingConfig.landmark,
-    day,
-    monthUpper: month,
-    dateUpper: `${day} ${month}`,
-    dateDot: `${day} · ${month}`,
+    groom: wedding.groom,
+    bride: wedding.bride,
+    namesScript: names,
+    venue: wedding.venue,
+    landmark: wedding.landmark,
+    displayDate: wedding.displayDate,
   };
 
+  if (p) {
+    Object.assign(values, {
+      day: String(p.day),
+      monthUp: MONTHS[p.month - 1],
+      year: String(p.year),
+      weekday: p.weekday,
+      startTime: `${p.hours}:${p.minutes}`,
+      dateDots: `${pad2(p.day)} • ${pad2(p.month)} • ${p.year}`,
+    });
+  }
+
   $$("[data-bind]").forEach((el) => {
-    const value = values[el.dataset.bind];
-    if (value !== undefined && el.textContent !== value) el.textContent = value;
+    const v = values[el.dataset.bind];
+    if (v !== undefined) el.textContent = v;
   });
 
-  document.title = `${weddingConfig.groom} & ${weddingConfig.bride} | Taklifnoma`;
+  const photos = { "./assets/couple.jpg": wedding.couplePhoto, "./assets/venue.jpg": wedding.venuePhoto };
+  $$("[data-photo]").forEach((img) => {
+    const attr = img.getAttribute("src");
+    if (photos[attr] && photos[attr] !== attr) img.src = photos[attr];
+  });
+
+  document.title = `${names} | Taklifnoma`;
 }
 
 /* --------------------------------------------------------------------------
-   Intro
+   Envelope — ochilish animatsiyasi
    -------------------------------------------------------------------------- */
-function initIntro() {
-  const intro = $("#intro");
+function initEnvelope(onOpen) {
+  const screen = $("#envelope-screen");
+  const seal = $("#env-seal");
   const body = document.body;
-  if (!intro) {
-    body.classList.remove("is-intro");
-    body.classList.add("is-ready");
-    document.dispatchEvent(new CustomEvent("intro:done"));
+
+  const reveal = () => {
+    body.classList.remove("is-sealed");
+    body.classList.add("is-open");
+    window.scrollTo(0, 0);
+    document.dispatchEvent(new CustomEvent("invitation:open"));
+  };
+
+  if (!screen || !seal) {
+    reveal();
     return;
   }
 
-  const reduced = prefersReducedMotion();
-  const HOLD = reduced ? 400 : 2400; // intro ko‘rinish vaqti (ms)
+  let opened = false;
 
-  const finish = () => {
-    intro.classList.add("intro--out");
-    body.classList.remove("is-intro");
-    body.classList.add("is-ready");
-    window.scrollTo(0, 0);
-    document.dispatchEvent(new CustomEvent("intro:done"));
-    setTimeout(() => intro.remove(), 1500);
+  const open = () => {
+    if (opened) return;
+    opened = true;
+
+    if (typeof onOpen === "function") onOpen(); // musiqa — user gesture ichida
+
+    const fast = reduced();
+    const t = fast
+      ? { flap: 0, rise: 0, away: 120, done: 400, scroll: 260 }
+      : { flap: 280, rise: 950, away: 1780, done: 2600, scroll: 1980 };
+
+    screen.classList.add("env--opening");
+    setTimeout(() => screen.classList.add("env--flap"), t.flap);
+    setTimeout(() => screen.classList.add("env--rise"), t.rise);
+    setTimeout(() => screen.classList.add("env--away"), t.away);
+    setTimeout(reveal, t.scroll);
+    setTimeout(() => screen.remove(), t.done);
   };
 
-  // Font yuklanishini kutamiz (max 700ms) — shunda serif intro sakramaydi
-  const start = () => {
-    body.classList.add("intro-play");
-    setTimeout(finish, HOLD);
-  };
-
-  if (document.fonts && document.fonts.ready) {
-    let started = false;
-    const once = () => {
-      if (started) return;
-      started = true;
-      start();
-    };
-    document.fonts.ready.then(once);
-    setTimeout(once, 700);
-  } else {
-    start();
-  }
+  seal.addEventListener("click", open);
+  // Konvertning istalgan joyiga tegish ham ochadi
+  screen.addEventListener("click", open);
 }
 
 /* --------------------------------------------------------------------------
-   Scroll reveal system  ([data-reveal] → .is-visible)
+   Scroll reveal — [data-reveal] va timeline
    -------------------------------------------------------------------------- */
-function initRevealAnimations() {
+function initReveals() {
   const targets = $$("[data-reveal]");
 
   targets.forEach((el) => {
     if (el.dataset.delay) el.style.setProperty("--d", `${parseInt(el.dataset.delay, 10) || 0}ms`);
   });
 
-  $$("[data-stagger]").forEach((parent) => {
+  $$("[data-reveal='stagger']").forEach((parent) => {
     Array.from(parent.children).forEach((child, i) => child.style.setProperty("--i", i));
   });
 
+  const extra = $$(".tl-item, .timeline");
+  const all = targets.concat(extra);
+
   if (!("IntersectionObserver" in window)) {
-    targets.forEach((el) => el.classList.add("is-visible"));
+    all.forEach((el) => el.classList.add("in"));
     return;
   }
 
@@ -125,47 +181,42 @@ function initRevealAnimations() {
     (entries) => {
       entries.forEach((entry) => {
         if (!entry.isIntersecting) return;
-        entry.target.classList.add("is-visible");
+        entry.target.classList.add("in");
         io.unobserve(entry.target);
       });
     },
-    { rootMargin: "0px 0px -10% 0px", threshold: 0.15 }
+    { rootMargin: "0px 0px -8% 0px", threshold: 0.12 }
   );
 
-  targets.forEach((el) => io.observe(el));
+  all.forEach((el) => io.observe(el));
 }
 
 /* --------------------------------------------------------------------------
-   Countdown — faqat textContent yangilanadi
+   Countdown — har sekundda faqat textContent yangilanadi
    -------------------------------------------------------------------------- */
 function initCountdown() {
-  const grid = $("#countdown-grid");
-  const today = $("#countdown-today");
-  const cells = {
-    days: $("#cd-days"),
-    hours: $("#cd-hours"),
-    minutes: $("#cd-minutes"),
-    seconds: $("#cd-seconds"),
-  };
+  const grid = $("#cd");
+  const today = $("#cd-today");
+  const cells = { d: $("#cd-d"), h: $("#cd-h"), m: $("#cd-m"), s: $("#cd-s") };
   if (!grid || !today || Object.values(cells).some((c) => !c)) return;
 
-  const target = new Date(weddingConfig.date).getTime();
+  const target = new Date(wedding.date).getTime();
   if (Number.isNaN(target)) return;
 
-  const previous = {};
+  const prev = {};
   const pad = (n) => String(n).padStart(2, "0");
+  let timer = null;
 
-  const setValue = (key, value) => {
-    if (previous[key] === value) return;
-    previous[key] = value;
+  const set = (key, value) => {
+    if (prev[key] === value) return;
+    prev[key] = value;
     const el = cells[key];
     el.textContent = value;
-    el.classList.add("is-ticking");
-    // next frame → remove class → CSS eases back (transform/opacity only)
-    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove("is-ticking")));
+    el.classList.add("tick");
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.remove("tick")));
   };
 
-  let timer = null;
+  const stop = () => { if (timer) { clearInterval(timer); timer = null; } };
 
   const tick = () => {
     const diff = target - Date.now();
@@ -173,32 +224,21 @@ function initCountdown() {
     if (diff <= 0) {
       grid.hidden = true;
       today.hidden = false;
-      today.setAttribute("data-reveal", "blur-in");
-      requestAnimationFrame(() => today.classList.add("is-visible"));
+      today.setAttribute("data-reveal", "fade");
+      requestAnimationFrame(() => today.classList.add("in"));
       stop();
       return;
     }
 
     const s = Math.floor(diff / 1000);
-    setValue("days", pad(Math.floor(s / 86400)));
-    setValue("hours", pad(Math.floor((s % 86400) / 3600)));
-    setValue("minutes", pad(Math.floor((s % 3600) / 60)));
-    setValue("seconds", pad(s % 60));
+    set("d", pad(Math.floor(s / 86400)));
+    set("h", pad(Math.floor((s % 86400) / 3600)));
+    set("m", pad(Math.floor((s % 3600) / 60)));
+    set("s", pad(s % 60));
   };
 
-  const start = () => {
-    if (timer) return;
-    tick();
-    timer = setInterval(tick, 1000);
-  };
+  const start = () => { if (!timer) { tick(); timer = setInterval(tick, 1000); } };
 
-  const stop = () => {
-    if (!timer) return;
-    clearInterval(timer);
-    timer = null;
-  };
-
-  // Tab yashirin bo‘lsa batareyani tejaymiz
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) stop();
     else if (target - Date.now() > 0) start();
@@ -208,15 +248,61 @@ function initCountdown() {
 }
 
 /* --------------------------------------------------------------------------
-   Music player — autoplay majburlanmaydi, birinchi interactionda ishga tushadi
+   Timeline — config'dan quriladi
    -------------------------------------------------------------------------- */
-function initMusicPlayer() {
+const TL_ICONS = {
+  rings:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">' +
+    '<circle cx="9.5" cy="15" r="5.6"/><circle cx="16" cy="12" r="5.6"/>' +
+    '<path d="M14 2.6 12.4 5.4h3.2L14 2.6Z"/></svg>',
+  glass:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M6.5 3h5l-1 7a1.6 1.6 0 0 1-3 0l-1-7Z"/><path d="M9 13v7M6.6 20.6h4.8"/>' +
+    '<path d="M13 3h5l-1 7a1.6 1.6 0 0 1-3 0l-1-7Z"/><path d="M15.5 13v7M13.1 20.6h4.8"/></svg>',
+  flower:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M12 21V9"/><path d="M12 15c-4.2 0-6.8-2.6-6.8-6.8C9.4 8.2 12 10.8 12 15Z"/>' +
+    '<path d="M12 12.5c4.2 0 6.8-2.6 6.8-6.8-4.2 0-6.8 2.6-6.8 6.8Z"/><circle cx="12" cy="4.6" r="1.8"/></svg>',
+  music:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M9 18V5.5l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/></svg>',
+};
+
+function initTimeline() {
+  const list = $("#timeline");
+  if (!list) return;
+
+  const items = Array.isArray(wedding.timeline) ? wedding.timeline : [];
+  if (!items.length) {
+    const section = list.closest("section");
+    if (section) section.hidden = true;
+    return;
+  }
+
+  list.innerHTML = items
+    .map((item, i) => {
+      const icon = TL_ICONS[item.icon] || TL_ICONS.flower;
+      return (
+        `<li class="tl-item" style="--d:${i * 120}ms">` +
+        `<span class="tl-item__icon" aria-hidden="true">${icon}</span>` +
+        `<p class="tl-item__time">${item.time}</p>` +
+        `<p class="tl-item__title">${item.title}</p>` +
+        `</li>`
+      );
+    })
+    .join("");
+}
+
+/* --------------------------------------------------------------------------
+   Music — autoplay majburlanmaydi, konvert ochilganda user gesture bilan boshlanadi
+   -------------------------------------------------------------------------- */
+function createMusicPlayer() {
   const audio = $("#bgm");
   const btn = $("#music-btn");
-  if (!audio || !btn) return;
+  if (!audio || !btn) return { start() {} };
 
-  let state = "paused"; // paused | playing | unavailable
-  let sourceAttached = false;
+  let state = "paused";
+  let attached = false;
 
   const setState = (next) => {
     state = next;
@@ -232,69 +318,37 @@ function initMusicPlayer() {
     btn.tabIndex = -1;
   };
 
-  const attachSource = () => {
-    if (sourceAttached) return;
-    sourceAttached = true;
-    audio.src = weddingConfig.music;
+  const attach = () => {
+    if (attached) return;
+    attached = true;
+    audio.src = wedding.music;
     audio.load();
   };
 
   const play = () => {
-    if (state === "unavailable") return Promise.resolve(false);
-    attachSource();
-    let promise;
-    try {
-      promise = audio.play();
-    } catch (_) {
-      markUnavailable();
-      return Promise.resolve(false);
-    }
-    if (!promise || typeof promise.then !== "function") {
-      setState("playing");
-      return Promise.resolve(true);
-    }
-    return promise
-      .then(() => {
-        setState("playing");
-        return true;
-      })
-      .catch((err) => {
-        // NotAllowedError → browser autoplay policy: jim qolamiz, keyingi bosishda ishlaydi
-        // Boshqa xatolar (fayl yo‘q / format) → tugmani yashiramiz
-        if (!err || err.name !== "NotAllowedError") markUnavailable();
-        return false;
-      });
+    if (state === "unavailable") return;
+    attach();
+    let p;
+    try { p = audio.play(); } catch (_) { markUnavailable(); return; }
+    if (!p || typeof p.then !== "function") { setState("playing"); return; }
+    p.then(() => setState("playing")).catch((err) => {
+      // NotAllowedError → brauzer ruxsat bermadi, tugma orqali yoqiladi
+      if (!err || err.name !== "NotAllowedError") markUnavailable();
+    });
   };
 
-  const pause = () => {
-    audio.pause();
-    setState("paused");
-  };
+  const pause = () => { audio.pause(); setState("paused"); };
 
   audio.addEventListener("error", markUnavailable);
   audio.addEventListener("play", () => { if (state !== "unavailable") setState("playing"); });
   audio.addEventListener("pause", () => { if (state === "playing") setState("paused"); });
 
-  btn.addEventListener("click", () => {
-    if (state === "playing") pause();
-    else play();
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (state === "playing") pause(); else play();
   });
 
-  // Intro tugagach: foydalanuvchining birinchi tap/click/keydown → musiqa
-  document.addEventListener(
-    "intro:done",
-    () => {
-      const events = ["touchend", "click", "keydown"];
-      const onFirstInteraction = (e) => {
-        if (e.target && e.target.closest && e.target.closest("#music-btn")) return; // tugmaning o‘zi boshqaradi
-        if (e.type === "keydown" && e.key === "Tab") return;
-        events.forEach((t) => document.removeEventListener(t, onFirstInteraction));
-        if (state === "paused") play();
-      };
-      events.forEach((t) => document.addEventListener(t, onFirstInteraction, { passive: true }));
-    },
-    { once: true }
-  );
+  return { start: play };
 }
 
 /* --------------------------------------------------------------------------
@@ -304,81 +358,113 @@ function initMapButton() {
   const btn = $("#map-btn");
   if (!btn) return;
 
-  const buildUrl = () => {
-    const url = weddingConfig.mapUrl || MAP_URL;
-    if (url && url !== "#") return url;
-    const c = weddingConfig.coords;
+  const url = () => {
+    if (wedding.mapUrl && wedding.mapUrl !== "#") return wedding.mapUrl;
+    const c = wedding.coords;
     if (c && Number.isFinite(c.lat) && Number.isFinite(c.lng)) {
-      // Yandex: pt=lng,lat
       return `https://yandex.uz/maps/?pt=${c.lng},${c.lat}&z=17&l=map`;
     }
     return "";
   };
 
   btn.addEventListener("click", () => {
-    const url = buildUrl();
-    if (!url) return; // havola ham, koordinata ham yo‘q
-    window.open(url, "_blank", "noopener");
+    const href = url();
+    if (href) window.open(href, "_blank", "noopener");
   });
 }
 
 /* --------------------------------------------------------------------------
-   Parallax — faqat [data-parallax] elementlar, rAF bilan, passiv scroll
+   RSVP
+   -------------------------------------------------------------------------- */
+function initRsvp() {
+  const form = $("#rsvp-form");
+  const note = $("#rsvp-note");
+  const nameInput = $("#rsvp-name");
+  if (!form || !note || !nameInput) return;
+
+  const say = (text, isError) => {
+    note.textContent = text;
+    note.classList.toggle("err", Boolean(isError));
+    note.classList.add("show");
+  };
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const name = nameInput.value.trim();
+    if (!name) {
+      say("Iltimos, ismingizni yozing.", true);
+      nameInput.focus();
+      return;
+    }
+
+    const answer = (form.querySelector("input[name='answer']:checked") || {}).value || "";
+    const message = `Taklifnoma javobi\nIsm: ${name}\nJavob: ${answer}`;
+
+    if (wedding.rsvpWhatsApp) {
+      const phone = String(wedding.rsvpWhatsApp).replace(/\D/g, "");
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+      say("Rahmat! Javobingiz yuborilmoqda.");
+      return;
+    }
+
+    if (wedding.rsvpTelegram) {
+      const user = String(wedding.rsvpTelegram).replace(/^@/, "");
+      window.open(`https://t.me/${user}?text=${encodeURIComponent(message)}`, "_blank", "noopener");
+      say("Rahmat! Javobingiz yuborilmoqda.");
+      return;
+    }
+
+    // Backend yo‘q — javob shu qurilmada saqlanadi
+    try {
+      localStorage.setItem("rsvp", JSON.stringify({ name, answer, at: new Date().toISOString() }));
+    } catch (_) { /* private rejimda localStorage ishlamasligi mumkin */ }
+
+    say(answer.startsWith("Albatta")
+      ? `Rahmat, ${name}! Sizni kutib qolamiz.`
+      : `Rahmat, ${name}. Javobingiz qabul qilindi.`);
+    form.querySelector("button[type='submit']").disabled = true;
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Photos — fayl bo‘lmasa nafis placeholder ko‘rsatiladi
+   -------------------------------------------------------------------------- */
+function initPhotos() {
+  $$("[data-photo]").forEach((img) => {
+    const figure = img.closest(".photo");
+    if (!figure) return;
+    const miss = () => figure.classList.add("is-missing");
+    img.addEventListener("error", miss);
+    if (img.complete && img.naturalWidth === 0) miss();
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Parallax — juda yengil, faqat [data-parallax]
    -------------------------------------------------------------------------- */
 function initParallax() {
-  if (prefersReducedMotion()) return;
-
-  // Juda kuchsiz qurilmalarda umuman yoqmaymiz
-  const lowEnd =
-    (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) ||
-    (navigator.deviceMemory && navigator.deviceMemory < 2);
-  if (lowEnd) return;
+  if (reduced()) return;
+  if ((navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2) ||
+      (navigator.deviceMemory && navigator.deviceMemory < 2)) return;
 
   const items = $$("[data-parallax]").map((el) => ({
     el,
     factor: parseFloat(el.dataset.parallax) || 0,
-    axis: el.dataset.parallaxAxis === "y" ? "y" : "x",
     visible: false,
   }));
   if (!items.length || !("IntersectionObserver" in window)) return;
 
   let ticking = false;
-  let active = true;
-
-  // Performance monitor: ketma-ket sekin frame'lar ko‘p bo‘lsa parallax o‘chadi
-  let lastFrame = 0;
-  let frames = 0;
-  let slowFrames = 0;
-
-  const disable = () => {
-    active = false;
-    window.removeEventListener("scroll", onScroll);
-    items.forEach((it) => (it.el.style.transform = ""));
-  };
 
   const update = () => {
     ticking = false;
-    if (!active) return;
-
-    const now = performance.now();
-    if (lastFrame && now - lastFrame < 120) {
-      frames += 1;
-      if (now - lastFrame > 40) slowFrames += 1;
-      if (frames >= 40 && slowFrames / frames > 0.35) {
-        disable();
-        return;
-      }
-    }
-    lastFrame = now;
-
     const vh = window.innerHeight;
     for (const it of items) {
       if (!it.visible) continue;
       const rect = it.el.getBoundingClientRect();
-      const fromCenter = rect.top + rect.height / 2 - vh / 2; // px
-      const offset = (fromCenter * it.factor).toFixed(2);
-      it.el.style.transform =
-        it.axis === "x" ? `translate3d(${offset}px, 0, 0)` : `translate3d(0, ${offset}px, 0)`;
+      const fromCenter = rect.top + rect.height / 2 - vh / 2;
+      it.el.style.transform = `translate3d(0, ${(fromCenter * it.factor).toFixed(2)}px, 0)`;
     }
   };
 
@@ -409,21 +495,20 @@ function initParallax() {
    -------------------------------------------------------------------------- */
 function init() {
   applyConfig();
+  initTimeline();
+  initPhotos();
   initCountdown();
-  initMusicPlayer();
   initMapButton();
+  initRsvp();
 
-  // Reveal + parallax intro tugagach yoqiladi (intro ostida hech narsa ishlamasin)
-  document.addEventListener(
-    "intro:done",
-    () => {
-      initRevealAnimations();
-      initParallax();
-    },
-    { once: true }
-  );
+  const music = createMusicPlayer();
 
-  initIntro();
+  document.addEventListener("invitation:open", () => {
+    initReveals();
+    initParallax();
+  }, { once: true });
+
+  initEnvelope(() => music.start());
 }
 
 if (document.readyState === "loading") {
